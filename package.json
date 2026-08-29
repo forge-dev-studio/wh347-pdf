@@ -1,0 +1,30 @@
+{
+  "name": "wh347-pdf",
+  "version": "0.1.0",
+  "description": "Fill the official U.S. DOL Form WH-347 (Davis-Bacon weekly certified payroll, Rev. Jan 2025) in Node or the browser. Measured coordinates, integer-cent pay math, validation that refuses to fabricate.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./compute": "./compute.js",
+    "./cover": "./cover.js",
+    "./wd-parse": "./wd-parse.js"
+  },
+  "files": ["index.js", "compute.js", "coords.js", "cover.js", "wd-parse.js", "data/wh347-official.pdf", "README.md", "LICENSE"],
+  "scripts": {
+    "test": "node tests/compute.test.mjs && node tests/fill.test.mjs"
+  },
+  "keywords": ["wh-347", "wh347", "certified-payroll", "davis-bacon", "prevailing-wage", "construction", "payroll", "pdf", "dol"],
+  "author": "Corey Redwine (Forge Dev Studio LLC)",
+  "license": "MIT",
+  "homepage": "https://weeklycertified.com",
+  "repository": { "type": "git", "url": "https://github.com/forge-dev-studio/wh347-pdf.git" },
+  "peerDependencies": {
+    "pdf-lib": "^1.17.1",
+    "@pdf-lib/fontkit": "^1.1.1"
+  },
+  "devDependencies": {
+    "pdf-lib": "^1.17.1",
+    "@pdf-lib/fontkit": "^1.1.1"
+  }
+}
