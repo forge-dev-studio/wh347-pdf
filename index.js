@@ -133,7 +133,7 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
   check(pg1, bold, payroll.role === 'prime' ? P1.checkboxes.prime : P1.checkboxes.sub); // role validated above
 
   const H = P1.header;
-  drawFit(pg1, font, payroll.projectName, H.projectName.x, H.projectName.y, 148);
+  drawFit(pg1, font, payroll.projectName, H.projectName.x, H.projectName.y, 141);
   drawFit(pg1, font, payroll.projectNumber, H.projectNumber.x, H.projectNumber.y, 138);
   drawFit(pg1, font, payroll.payrollNumber, H.payrollNumber.x, H.payrollNumber.y, 90);
   drawFit(pg1, font, payroll.businessName, H.businessName.x, H.businessName.y, 200);
@@ -143,15 +143,32 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
   drawFit(pg1, font, payroll.businessAddress, H.businessAddress.x, H.businessAddress.y, 200);
 
   // ---- day/date header cells ----
+  // Centered inside each measured day cell; shrink to fit, never cross a
+  // day boundary.
+  const dayCell = (val, i, y, size) => {
+    if (val == null || val === '') return;
+    const [l, rr] = P1.dayGrid.cells[i];
+    const max = rr - l - 1;
+    let sz = size;
+    while (sz > 4.5 && font.widthOfTextAtSize(String(val), sz) > max) sz -= 0.25;
+    const tw = font.widthOfTextAtSize(String(val), sz);
+    if (tw > max) throw new Error(`"${val}" is too wide for its day cell`);
+    pg1.drawText(String(val), { x: (l + rr) / 2 - tw / 2, y, size: sz, font, color: INK });
+  };
   const days = payroll.days || (payroll.weekEndingDate ? weekDays(payroll.weekEndingDate) : []);
   days.slice(0, 7).forEach((d, i) => {
-    const cx = P1.dayGrid.xCenters[i];
-    drawFit(pg1, font, d.day, cx - font.widthOfTextAtSize(String(d.day), 5.5) / 2, P1.dayGrid.dayY, 13, 5.5);
-    drawFit(pg1, font, d.date, cx - font.widthOfTextAtSize(String(d.date), 5.5) / 2, P1.dayGrid.dateY, 13, 5.5);
+    dayCell(d.day, i, P1.dayGrid.dayY, 5.5);
+    dayCell(d.date, i, P1.dayGrid.dateY, 5.5);
   });
 
   // ---- worker rows ----
-  const C = P1.table.col;
+  const T = P1.table.textCells;
+  // Identity values stay inside their measured cell: left-aligned 1.5pt in
+  // from the cell's own left rule, never wider than the cell.
+  const idCell = (page, key, val, y, size = SIZE) => {
+    const [left, right] = T[key];
+    drawFit(page, font, val, left + 1.5, y, right - left - 3, size);
+  };
   const results = [];
   (payroll.workers || []).forEach((w, i) => {
     const row = P1.table.rows[i];
@@ -159,21 +176,29 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
     const r = computeWorker(w);
     results.push(r);
 
-    drawFit(pg1, font, w.entryNo ?? i + 1, C.entryNo, mid, 15);
-    drawFit(pg1, font, w.lastName, C.lastName, mid, 48);
-    drawFit(pg1, font, w.firstName, C.firstName, mid, 52);
-    drawFit(pg1, font, w.middleInitial, C.middleInitial, mid, 18);
-    drawFit(pg1, font, w.idNumber, C.idNumber, mid, 34);
-    drawFit(pg1, font, w.type, C.type, mid, 16);
-    drawWrapped(pg1, font, w.classification, C.classification, mid + 4, 42, 6);
+    idCell(pg1, 'entryNo', w.entryNo ?? i + 1, mid);
+    idCell(pg1, 'lastName', w.lastName, mid);
+    idCell(pg1, 'firstName', w.firstName, mid);
+    idCell(pg1, 'middleInitial', w.middleInitial, mid);
+    // "XXX-XX-1234" is wider than the (1E) cell on one line; the cell is
+    // full row height, so split mask and digits onto two legible lines.
+    const idm = /^(.*[Xx])-?(\d{4})$/.exec(String(w.idNumber ?? ''));
+    if (idm) {
+      idCell(pg1, 'idNumber', `${idm[1]}-`, mid + 4, 6);
+      idCell(pg1, 'idNumber', idm[2], mid - 4, 6);
+    } else {
+      idCell(pg1, 'idNumber', w.idNumber, mid, 6);
+    }
+    idCell(pg1, 'type', w.type, mid);
+    drawWrapped(pg1, font, w.classification, T.classification[0] + 1.5, mid + 4, T.classification[1] - T.classification[0] - 3, 6);
 
     (w.stHours || []).forEach((h, dIdx) => {
       const t = fmtHours(Math.round((Number(h) || 0) * 100));
-      if (t) drawFit(pg1, font, t, P1.dayGrid.xCenters[dIdx] - 4, row.st, 15, 6.5);
+      if (t) dayCell(t, dIdx, row.st, 6.5);
     });
     (w.otHours || []).forEach((h, dIdx) => {
       const t = fmtHours(Math.round((Number(h) || 0) * 100));
-      if (t) drawFit(pg1, font, t, P1.dayGrid.xCenters[dIdx] - 4, row.ot, 15, 6.5);
+      if (t) dayCell(t, dIdx, row.ot, 6.5);
     });
 
     // Numeric cells are right-aligned 1.5pt inside the cell's own measured
@@ -181,12 +206,12 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
     // rule or truncating a digit.
     const cell = (key, val, y = mid) => {
       const [left, right] = P1.table.moneyCells[key];
-      const max = right - left - 3;
+      const max = right - left - 2;
       let sz = 6.5;
       while (sz > 4.5 && font.widthOfTextAtSize(String(val), sz) > max) sz -= 0.5;
       const tw = font.widthOfTextAtSize(String(val), sz);
       if (tw > max) throw new Error(`value "${val}" is too wide for the ${key} column`);
-      pg1.drawText(String(val), { x: right - 1.5 - tw, y, size: sz, font, color: INK });
+      pg1.drawText(String(val), { x: right - 1 - tw, y, size: sz, font, color: INK });
     };
     if (r.totalSt) cell('totalHours', fmtHours(r.totalSt), row.st);
     if (r.totalOt) cell('totalHours', fmtHours(r.totalOt), row.ot);
@@ -208,7 +233,7 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
   // ---- page 2 ----
   const c = payroll.compliance || {};
   const H2 = P2.header;
-  drawFit(pg2, font, payroll.projectName, H2.projectName.x, H2.projectName.y, 200);
+  drawFit(pg2, font, payroll.projectName, H2.projectName.x, H2.projectName.y, 193);
   drawFit(pg2, font, payroll.projectNumber, H2.projectNumber.x, H2.projectNumber.y, 132);
   drawFit(pg2, font, payroll.payrollNumber, H2.payrollNumber.x, H2.payrollNumber.y, 88);
   drawFit(pg2, font, payroll.businessName, H2.businessName.x, H2.businessName.y, 275);
@@ -249,9 +274,11 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
   const FG = P2.fringeGrid;
   plans.forEach((plan, k) => {
     const col = FG.planCols[k];
-    drawFit(pg2, font, plan.name, col.x + 30, FG.planNameY, 58, 6);
-    drawFit(pg2, font, plan.type, col.x + 27, FG.planTypeY, 60, 6);
-    drawFit(pg2, font, plan.planNo, col.x + 31, FG.planNoY, 56, 6);
+    // The value area starts right of the printed FB NAME / FB TYPE / PLAN NO.
+    // label sub-cell (divider rule 34.6pt into the column).
+    drawFit(pg2, font, plan.name, col.x + 36.1, FG.planNameY, 46, 6);
+    drawFit(pg2, font, plan.type, col.x + 36.1, FG.planTypeY, 46, 6);
+    drawFit(pg2, font, plan.planNo, col.x + 36.1, FG.planNoY, 46, 6);
     check(pg2, bold, { x: plan.funded === false ? col.unfundedX : col.fundedX, y: FG.fundedY }); // funded validated above
   });
   (payroll.workers || []).forEach((w, i) => {
@@ -259,7 +286,7 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
     const name = [w.lastName, w.firstName].filter(Boolean).join(', ');
     const hasCredit = plans.some((p) => (p.creditsByWorker || [])[i]);
     if (!hasCredit) return;
-    drawFit(pg2, font, name, FG.workerNameX, y, 80, 6);
+    drawFit(pg2, font, name, FG.workerNameX, y, 74, 6);
     let total = 0;
     plans.forEach((plan, k) => {
       const credit = (plan.creditsByWorker || [])[i];
@@ -281,7 +308,7 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
   } else if (c.phone) {
     drawFit(pg2, font, c.phone, S.phone.area[0], S.phone.y - 12, 130);
   }
-  drawFit(pg2, font, c.email, S.emailX, S.y, 150);
+  drawFit(pg2, font, c.email, S.emailX, S.y, 135);
 
   return { bytes: await doc.save(), results };
 }

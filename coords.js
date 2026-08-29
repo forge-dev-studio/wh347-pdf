@@ -31,36 +31,50 @@ export const page1 = {
   // x 341.4 / 355.6 / 367.8 / 380.2 / 392.5 / 404.9 / 417.2 / 430.4; each cell
   // stacks day (top) and date (bottom) inside the y 376.2-389.6 band.
   dayGrid: {
-    xCenters: [348.5, 361.7, 374.0, 386.3, 398.7, 411.0, 423.8],
+    // Seven day cells [leftRule, rightRule], measured from the form's own
+    // vector rules. Each cell also carries a cosmetic inset tick ~4pt inside
+    // its right rule (insetX); values are too wide to respect it, so they
+    // center across the full cell and the bleed gate whitelists those ticks.
+    cells: [
+      [340.6, 355.2], [355.2, 367.6], [367.6, 379.9], [379.9, 392.3],
+      [392.3, 404.6], [404.6, 417.0], [417.0, 430.2],
+    ],
+    insetX: [351.2, 363.6, 376.0, 388.2, 400.6, 412.9, 426.1],
     dayY: 383.6,
     dateY: 377.0,
   },
   table: {
-    // Column x positions (left edge of writable cell area).
-    col: {
-      entryNo: 50, // (1A)
-      lastName: 68, // (1B)
-      firstName: 120, // (1C)
-      middleInitial: 176, // (1D)
-      idNumber: 200, // (1E)
-      type: 240, // (2) J / RA
-      classification: 258, // (3)
+    // Identity cells measured from the form's own vertical rules (same method
+    // as moneyCells; the old left-edge-plus-guessed-width numbers let long
+    // values cross rules — the SSN bled 13pt into the J/RA column).
+    // [leftRule, rightRule] in PDF points.
+    textCells: {
+      entryNo: [41.8, 65.6], // (1A)
+      lastName: [65.6, 115.7], // (1B)
+      firstName: [115.7, 165.2], // (1C)
+      middleInitial: [165.2, 190.2], // (1D)
+      idNumber: [190.2, 221.0], // (1E)
+      type: [221.0, 256.0], // (2) J / RA
+      classification: [256.0, 300.4], // (3)
     },
     // Money/hours cells measured from the form's own vertical rules in the
     // worker-row band (NOT from header label positions, which are centered
     // and misled an earlier version). [leftRule, rightRule] in PDF points.
+    // Right bound is each column's INSET writable box edge (a second rule
+    // ~4.3pt inside the outer column rule); aligning to the outer rule put
+    // digits on the dead gutter and read as bleed.
     moneyCells: {
-      totalHours: [430.4, 457.2],
-      rate: [469.6, 498.1],
-      fringeCredit: [498.1, 524.4],
-      cashInLieu: [524.4, 550.8],
-      grossProject: [550.8, 577.2],
-      grossAll: [577.2, 604.7],
-      dedTax: [604.7, 631.6],
-      dedFica: [631.6, 658.4],
-      dedOther: [658.4, 689.4],
-      dedTotal: [689.4, 712.8],
-      net: [712.8, 752.0],
+      totalHours: [430.4, 452.9],
+      rate: [469.6, 493.8],
+      fringeCredit: [498.1, 520.2],
+      cashInLieu: [524.4, 546.5],
+      grossProject: [550.8, 573.0],
+      grossAll: [577.2, 600.4],
+      dedTax: [604.7, 627.2],
+      dedFica: [631.6, 654.1],
+      dedOther: [658.4, 685.1],
+      dedTotal: [689.4, 708.5],
+      net: [712.8, 747.7],
     },
     // 8 worker rows; each has an ST line and an OT line (measured from the
     // form's own ST/OT gutter labels).
