@@ -29,8 +29,8 @@ function drawFit(page, font, text, x, y, maxWidth, size = SIZE, exact = false) {
   page.drawText(s, { x, y, size: sz, font, color: INK });
 }
 
-function check(page, font, pos) {
-  page.drawText('X', { x: pos.x, y: pos.y, size: 8, font, color: INK });
+function check(page, font, pos, size = 8) {
+  page.drawText('X', { x: pos.x, y: pos.y, size, font, color: INK });
 }
 
 const usDate = (iso) => {
@@ -279,7 +279,9 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
     drawFit(pg2, font, plan.name, col.x + 36.1, FG.planNameY, 46, 6);
     drawFit(pg2, font, plan.type, col.x + 36.1, FG.planTypeY, 46, 6);
     drawFit(pg2, font, plan.planNo, col.x + 36.1, FG.planNoY, 46, 6);
-    check(pg2, bold, { x: plan.funded === false ? col.unfundedX : col.fundedX, y: FG.fundedY }); // funded validated above
+    // Smaller X, nudged down: at 8pt the mark poked through the checkbox's
+    // top edge (caught by the rendered-pixel bleed scan).
+    check(pg2, bold, { x: plan.funded === false ? col.unfundedX : col.fundedX, y: FG.fundedY - 1.7 }, 6.5); // funded validated above
   });
   (payroll.workers || []).forEach((w, i) => {
     const y = FG.rowYs[i];
