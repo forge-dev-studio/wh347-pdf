@@ -98,6 +98,12 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
       throw new Error(`apprenticeship program "${p.name ?? ''}": registeredWith must be 'OA' or 'SAA'`);
     }
   }
+  // DOL instructions: box 4 is checked only when apprentices were paid and
+  // their programs are listed; when it does not apply it stays unchecked and
+  // the program row reads N/A.
+  if ((comp.certify || {}).apprenticesRegistered && !(comp.apprenticePrograms || []).length) {
+    throw new Error('box 4 (apprentices) is checked but no apprenticeship program is listed; if no apprentices were paid this week, leave box 4 unchecked and N/A is entered');
+  }
   all.forEach((w, i) => {
     if (!['J', 'RA'].includes(w.type)) {
       throw new Error(`worker ${i + 1}: type must be 'J' (journeyworker) or 'RA' (registered apprentice)`);
@@ -282,9 +288,9 @@ export async function fillWh347(officialPdfBytes, payroll, fonts = null) {
     if (cert.wagesFullyPaid) check(pg2, bold, CB.wagesFullyPaid);
 
     const programs = c.apprenticePrograms || [];
-    if (cert.apprenticesRegistered && !programs.length) {
-      // Per the annotated guide: when box 4 is checked with no apprentices
-      // this period, the program-name row takes "N/A".
+    if (!programs.length) {
+      // DOL instructions: "If box 4 is not applicable, do not check the box
+      // and enter 'Not Applicable' or 'N/A' ... under Apprenticeship Program Name."
       drawFit(pg2, font, 'N/A', P2.apprenticeship.rows[0].nameX, P2.apprenticeship.rows[0].y, 300);
     }
     programs.forEach((p, i) => {
